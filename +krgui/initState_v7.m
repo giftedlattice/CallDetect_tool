@@ -1,8 +1,4 @@
-% =========================
-% File: +krgui/initState_v7.m
-% FULL UPDATED VERSION
-% =========================
-function app = initState_v7(sig, fs, opts)
+function app = initState_v7(sig, fs, opts, meta)
 %INITSTATE_V7 Initialize analysis + detection + candidate pool. No UI here.
 
 rear  = sig(:,1);
@@ -59,6 +55,7 @@ app = struct();
 app.sig = sig;
 app.fs = fs;
 app.opts = opts;
+app.meta = meta;              % <-- NEW: stored for export-preview table
 app.rear = rear;
 app.env_dB = env_dB;
 app.noiseFloor_dB = noiseFloor_dB;

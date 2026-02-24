@@ -51,7 +51,7 @@ for i = 1:numel(aFiles)
         fs = double(S.fs);
     end
 
-    [calls, detInfo] = kr.callDetectGUI_v7(sig, fs, opts);
+    [calls, detInfo] = kr.callDetectGUI_v7(sig, fs, opts, meta);
 
     [~, baseChar] = fileparts(aFiles{i});
     base = string(baseChar);

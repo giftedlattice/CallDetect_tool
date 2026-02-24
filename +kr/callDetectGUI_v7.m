@@ -1,7 +1,10 @@
-function [calls, detInfo] = callDetectGUI_v7(sig, fs, opts)
-%CALLDETECTGUI_V7 Modular GUI entry point (public API stays the same).
+function [calls, detInfo] = callDetectGUI_v7(sig, fs, opts, meta)
+%CALLDETECTGUI_V7 Modular GUI entry point (now includes meta for export-preview table).
 
-% Validate inputs (fast)
+if nargin < 4 || isempty(meta)
+    meta = struct('bat',"", 'date',"", 'trial',"");
+end
+
 if ~isnumeric(sig) || size(sig,2) ~= 3
     error('sig must be Nsamp x 3 numeric: [rear,left,right].');
 end
@@ -10,12 +13,12 @@ if ~isscalar(fs) || ~isfinite(fs) || fs <= 0
 end
 
 % Build initial state (detection happens ONCE here)
-app = krgui.initState_v7(sig, fs, opts);
+app = krgui.initState_v7(sig, fs, opts, meta);
 
 % Build UI (two windows) and store handles into app
 app = krgui.buildUI_v7(app);
 
-% Wire callbacks (callbacks live in package functions; they read/write guidata)
+% Wire callbacks
 krgui.wireCallbacks_v7(app.mainFig);
 
 % Initial draw
@@ -39,5 +42,4 @@ app = guidata(app.mainFig);
 
 % Close windows
 krgui.safeClose_v7(app);
-
 end

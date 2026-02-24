@@ -1,15 +1,7 @@
 function T = deriveCallTable_full(sig, fs, calls, meta, opts)
-% All spectral features are computed from FIRST HARMONIC ONLY:
-%   opts.harmBand_kHz
+%DERIVECALLTABLE_FULL Export table for detected calls (modular version).
 %
-% Rear-only spectral features:
-%   peakFreq_kHz, startFreq_kHz, endFreq_kHz, bandwidth_kHz, slope_kHz_per_ms
-% Per-call timing:
-%   timestamp_s (rear onset), timestamp_left_s/right_s (peak time within window), ipi_ms
-% Per-channel amplitude at rear peak frequency:
-%   peakAmp_rear/left/right (PSD value at rear peak frequency)
-
-harmBand_Hz = opts.harmBand_kHz * 1000;
+% Uses helper feature functions in +kr/.
 
 n = numel(calls);
 
@@ -34,19 +26,18 @@ peakAmp_rear = nan(n,1);
 peakAmp_left = nan(n,1);
 peakAmp_right= nan(n,1);
 
+Nsamp = size(sig,1);
+
 for k = 1:n
-    on  = calls(k).on_samp;
-    off = calls(k).off_samp;
-
-    on  = max(1, min(size(sig,1), on));
-    off = max(1, min(size(sig,1), off));
-
+    on  = max(1, min(Nsamp, calls(k).on_samp));
+    off = max(1, min(Nsamp, calls(k).off_samp));
     if off <= on
         continue;
     end
 
+    % ---- timing
     timestamp_s(k) = (on-1)/fs;
-    duration_ms(k) = (off-on)/fs*1000;
+    duration_ms(k) = ((off-on)+1)/fs*1000; % inclusive
 
     if k < n
         ipi_ms(k) = ((calls(k+1).on_samp-1) - (on-1))/fs*1000;
@@ -56,29 +47,33 @@ for k = 1:n
     segL  = sig(on:off,2);
     segRR = sig(on:off,3);
 
-    % per-channel timing (peak abs waveform within window)
     [~, iPkL] = max(abs(segL));
     [~, iPkR] = max(abs(segRR));
     timestamp_left_s(k)  = (on + iPkL - 2)/fs;
     timestamp_right_s(k) = (on + iPkR - 2)/fs;
 
-    % Rear PSD in harmonic band
-    [Fr_kHz, Pr] = kr.pwelchBand(segR, fs, harmBand_Hz);
-    if isempty(Fr_kHz)
-        continue;
+    % ---- spectral features (modular)
+    fPeak = kr.feature_peakFreqWelch_v7(segR, fs, opts);
+    peakFreq_kHz(k) = fPeak;
+
+    r = kr.feature_ridgeFreqs_v7(segR, fs, opts);
+    startFreq_kHz(k) = r.start_kHz;
+    endFreq_kHz(k)   = r.end_kHz;
+
+    if isfinite(r.min_kHz) && isfinite(r.max_kHz)
+        bandwidth_kHz(k) = r.max_kHz - r.min_kHz;
     end
 
-    [~, iMax] = max(Pr);
-    fPeak_kHz = Fr_kHz(iMax);
-    peakFreq_kHz(k) = fPeak_kHz;
+    if isfinite(r.start_kHz) && isfinite(r.end_kHz) && duration_ms(k) > 0
+        slope_kHz_per_ms(k) = (r.end_kHz - r.start_kHz) / duration_ms(k);
+    end
 
-    % NOTE: start/end/bandwidth/slope are intentionally left NaN in v7 as in your current code.
-    % You can later compute them using kr.minMaxFreqFromSpec() without touching GUI or IO.
-
-    % Peak amplitude at REAR peak frequency, measured on all channels (PSD value)
-    peakAmp_rear(k)  = kr.ampAtFreqFromPSD(segR,  fs, harmBand_Hz, fPeak_kHz);
-    peakAmp_left(k)  = kr.ampAtFreqFromPSD(segL,  fs, harmBand_Hz, fPeak_kHz);
-    peakAmp_right(k) = kr.ampAtFreqFromPSD(segRR, fs, harmBand_Hz, fPeak_kHz);
+    if isfinite(fPeak)
+        amps = kr.feature_peakAmpsAtPeakFreq_v7(segR, segL, segRR, fs, opts, fPeak);
+        peakAmp_rear(k)  = amps.rear;
+        peakAmp_left(k)  = amps.left;
+        peakAmp_right(k) = amps.right;
+    end
 end
 
 T = table(bat,date,trial,call_number, ...
