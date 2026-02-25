@@ -1,14 +1,12 @@
-        function KR_callDetectTool_v7()
+function KR_callDetectTool_v7()
 % KR_callDetectTool_v7 (modularized v7)
 % - Detect calls using REAR channel only
 % - Edit call start/end in REAR waveform (draggable bounds)
-% - Toggle label/unlabel (unlabeled excluded from export)
-% - Fast spectrogram settings (win=256, ovl=192, nfft=512) for REAR only
-% - Context spectrogram includes call numbers
-% - Export (after OK) computes first-harmonic features + per-channel timing/amp
+% - Toggle / Delete / Add supported in GUI
+% - Export computes first-harmonic features + per-channel timing/amp (if channels exist)
 %
 % Audio MAT must contain:
-%   sig: [Nsamp x 3] (rear,left,right)
+%   sig: [Nsamp x 1] OR [Nsamp x 2] OR [Nsamp x 3]
 %   fs : optional
 
 % ====== METADATA (edit these) ======
@@ -40,9 +38,11 @@ for i = 1:numel(aFiles)
         continue;
     end
 
-    sig = double(S.sig);
-    if size(sig,2) ~= 3
-        warning('Skipping %s: sig must be Nsamp x 3 (rear,left,right).', aFiles{i});
+    % Normalize to Nx3 [rear,left,right]
+    try
+        sig = kr.normalizeSigTo3ch(S.sig);
+    catch ME
+        warning('Skipping %s: %s', aFiles{i}, ME.message);
         continue;
     end
 
@@ -51,6 +51,7 @@ for i = 1:numel(aFiles)
         fs = double(S.fs);
     end
 
+    % GUI (now takes meta for preview table)
     [calls, detInfo] = kr.callDetectGUI_v7(sig, fs, opts, meta);
 
     [~, baseChar] = fileparts(aFiles{i});
@@ -63,7 +64,7 @@ for i = 1:numel(aFiles)
         T = kr.deriveCallTable_full(sig, fs, calls, meta, opts);
         writetable(T, fullfile(aPath, base + "_calls.csv"));
 
-        % also store table in calls mat for convenience
+        % store table in calls mat for convenience
         detInfo.callTable = T; %#ok<NASGU>
         save(outCalls,'calls','detInfo','fs','fullMat');
     end
