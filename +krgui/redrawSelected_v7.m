@@ -21,7 +21,9 @@ end
 tOn  = (on-1)/app.fs;
 tOff = (off-1)/app.fs;
 
+% =========================
 % CALL display segment
+% =========================
 half = round(app.opts.callHalfWin_s * app.fs);
 a = max(1, round((on+off)/2) - half);
 b = min(app.Nsamp, round((on+off)/2) + half);
@@ -63,12 +65,15 @@ end
 app.specBounds.on  = xline(app.axCallSpec, tOn,  '--', 'LineWidth', 1.5);
 app.specBounds.off = xline(app.axCallSpec, tOff, '--', 'LineWidth', 1.5);
 
+% =========================
 % CONTEXT segment
+% =========================
 ctxHalf = round(app.opts.contextHalfWin_s * app.fs);
 cA = max(1, round((on+off)/2) - ctxHalf);
 cB = min(app.Nsamp, round((on+off)/2) + ctxHalf);
 tCtx = (cA:cB)/app.fs;
 
+% Context waveform
 axes(app.axCtxWave);
 kr.plotDecimated(tCtx, app.rear(cA:cB), app.opts.maxSegForPlot);
 hold on;
@@ -76,6 +81,7 @@ xline(app.axCtxWave, tOn,'--'); xline(app.axCtxWave, tOff,'--');
 title(app.axCtxWave, 'Context waveform (rear)');
 xlabel(app.axCtxWave,'Time (s)');
 
+% Context spectrogram
 axes(app.axCtxSpec);
 ctx = app.rear(cA:cB);
 [SdBc,Fkc,Tkc] = kr.fastSpec(ctx, app.fs, app.opts);
@@ -84,6 +90,38 @@ ylim(app.axCtxSpec, app.opts.harmBand_kHz);
 xlabel(app.axCtxSpec,'Time (s)'); ylabel(app.axCtxSpec,'kHz');
 title(app.axCtxSpec,'Context spectrogram (rear)');
 kr.contrastStretch(app.axCtxSpec, SdBc);
+
+% ---- Overlay call markers on context spectrogram (dots + numbers)
+hold(app.axCtxSpec, 'on');
+
+yTop = app.opts.harmBand_kHz(2);
+yDot = yTop - 0.6;     % dot row
+yTxt = yTop - 1.4;     % number row
+
+cDot = [1 0 0]; % blue
+
+tStart = tCtx(1);
+tEnd   = tCtx(end);
+
+for kk = 1:numel(app.state.calls_on)
+    tt = (app.state.calls_on(kk)-1)/app.fs;
+    if tt >= tStart && tt <= tEnd
+        plot(app.axCtxSpec, tt, yDot, 'o', ...
+            'MarkerFaceColor', cDot, ...
+            'MarkerEdgeColor', cDot, ...
+            'MarkerSize', 5);
+
+        text(app.axCtxSpec, tt, yTxt, sprintf('%d', kk), ...
+            'HorizontalAlignment','center', ...
+            'VerticalAlignment','top', ...
+            'FontSize',9, ...
+            'FontWeight','bold', ...
+            'Color', cDot, ...
+            'Clipping','on');
+    end
+end
+
+hold(app.axCtxSpec, 'off');
 
 guidata(mainFig, app);
 end

@@ -45,6 +45,9 @@ opts.boundRefine_enable = true;
 % Typical: 12–18. Start at ~14.
 opts.boundRefine_dropFromPeak_dB = 14;
 
+opts.ridgeActiveDrop_dB = 12;  % for active time bins (start/end time)
+opts.ridgeEdgeDrop_dB   = 28;  % for high-edge at start bin (more permissive)
+
 % Quiet hold time required below (peak-drop) to declare end (ms).
 % Typical: 0.1–0.4 ms depending on echo density.
 opts.boundRefine_quiet_ms = 0.20;

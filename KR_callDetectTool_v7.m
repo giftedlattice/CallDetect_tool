@@ -1,19 +1,51 @@
+
+
+% What is and how is endFrew being calculated? 
+% should be on dotted line from lowest freq to call
+
+
+% Work out system for seperating echos and calls
+
+% IPI less than 2ms would be slight indication of scho 
+
+% average noise floor to call should only start at 3x amplitude
+
+% bandwith should be above 0, list if possible for users on calls close to
+% 0 or hightlighted. 
+
 function KR_callDetectTool_v7()
 % KR_callDetectTool_v7 (modularized v7)
 % - Detect calls using REAR channel only
 % - Edit call start/end in REAR waveform (draggable bounds)
-% - Toggle / Delete / Add supported in GUI
+% - Add/Toggle/Delete supported in GUI
 % - Export computes first-harmonic features + per-channel timing/amp (if channels exist)
 %
 % Audio MAT must contain:
 %   sig: [Nsamp x 1] OR [Nsamp x 2] OR [Nsamp x 3]
 %   fs : optional
 
-% ====== METADATA (edit these) ======
-meta = struct();
-meta.bat   = "bat1";
-meta.date  = "2026-02-12";
-meta.trial = "03";
+% ---- Prompt metadata (so nobody edits code) ----
+% ---- Metadata defaults (will be overridden by last-used config if present) ----
+defaultMeta = struct();
+defaultMeta.bat   = "bat1";
+defaultMeta.date  = string(datetime('today','Format','yyyy-MM-dd'));
+defaultMeta.trial = "01";
+defaultMeta.condition = "";
+defaultMeta.catchTrial = false;
+defaultMeta.temperature_C = NaN;
+defaultMeta.humidity_pct  = NaN;
+
+% Load last-used meta (if available)
+defaultMeta = krgui.loadLastMeta_v7(defaultMeta);
+
+% Prompt user
+[meta, ok] = krgui.promptMeta_v7(defaultMeta);
+if ~ok
+    return;
+end
+
+% Save last-used meta for next time
+krgui.saveLastMeta_v7(meta);
 
 fsDefault = 250000;
 opts = kr.defaultOpts_v7();
@@ -51,7 +83,7 @@ for i = 1:numel(aFiles)
         fs = double(S.fs);
     end
 
-    % GUI (now takes meta for preview table)
+    % GUI (takes meta for preview table)
     [calls, detInfo] = kr.callDetectGUI_v7(sig, fs, opts, meta);
 
     [~, baseChar] = fileparts(aFiles{i});
