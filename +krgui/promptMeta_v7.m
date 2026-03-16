@@ -9,6 +9,7 @@ end
 conds = krgui.loadConditions_v7([""]);
 
 % defaults
+
 defBat   = string(getField_(defaultMeta,'bat',"bat1"));
 defDate  = string(getField_(defaultMeta,'date',string(datetime('today','Format','yyyy-MM-dd'))));
 defTrial = string(getField_(defaultMeta,'trial',"01"));

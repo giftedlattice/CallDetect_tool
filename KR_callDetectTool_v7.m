@@ -1,18 +1,3 @@
-
-
-% What is and how is endFrew being calculated? 
-% should be on dotted line from lowest freq to call
-
-
-% Work out system for seperating echos and calls
-
-% IPI less than 2ms would be slight indication of scho 
-
-% average noise floor to call should only start at 3x amplitude
-
-% bandwith should be above 0, list if possible for users on calls close to
-% 0 or hightlighted. 
-
 function KR_callDetectTool_v7()
 % KR_callDetectTool_v7 (modularized v7)
 % - Detect calls using REAR channel only
@@ -93,8 +78,16 @@ for i = 1:numel(aFiles)
     save(outCalls,'calls','detInfo','fs','fullMat');
 
     if isfield(detInfo,'accepted') && detInfo.accepted && ~isempty(calls)
+        
+        %export to csv
         T = kr.deriveCallTable_full(sig, fs, calls, meta, opts);
         writetable(T, fullfile(aPath, base + "_calls.csv"));
+
+        %export to SQLite database in the same folder
+        toolRoot = fileparts(mfilename('fullpath'));          % folder where this .m file lives
+        dbPath   = fullfile(toolRoot, "Bats.sqlite");
+        krdb.exportTrial_v7(dbPath, meta, fs, fullMat, calls, T);
+
 
         % store table in calls mat for convenience
         detInfo.callTable = T; %#ok<NASGU>

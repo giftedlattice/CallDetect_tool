@@ -1,7 +1,3 @@
-% =========================
-% File: +kr/defaultOpts_v7.m
-% FULL UPDATED VERSION
-% =========================
 function opts = defaultOpts_v7()
 %DEFAULTOPTS_V7 Central place for all tunable parameters.
 
@@ -16,19 +12,21 @@ opts.harmBand_kHz = [20 70];
 % Envelope smoothing
 opts.envSmooth_ms = 0.6;
 
-% Detection criteria
+% Detection criteria (candidate creation)
 opts.minCallDur_ms = 0.3;
 opts.minCallSep_ms = 2.0;
 opts.mergeGap_ms   = 0.6;
+
+% Baseline threshold (your "good" default)
 opts.initThrAboveNoise_dB = 12;
 
 % Windows
-opts.callHalfWin_s    = 0.020; % around call for call-view display
-opts.contextHalfWin_s = 1.50;  % big context window
+opts.callHalfWin_s    = 0.020;
+opts.contextHalfWin_s = 1.50;
 
 % Tight display padding around editable bounds
-opts.callPad_s     = 0.002; % waveform
-opts.callSpecPad_s = 0.030; % spectrogram
+opts.callPad_s     = 0.002;
+opts.callSpecPad_s = 0.030;
 
 % Fast spectrogram settings (ALWAYS use these)
 opts.specWin  = 256;
@@ -40,23 +38,30 @@ opts.maxSegForPlot = 2500;
 
 % --- Auto boundary refinement to cut off echoes (main burst) ---
 opts.boundRefine_enable = true;
-
-% Relative-to-peak drop (dB). Bigger = shorter bounds (more aggressive).
-% Typical: 12–18. Start at ~14.
 opts.boundRefine_dropFromPeak_dB = 14;
-
-opts.ridgeActiveDrop_dB = 12;  % for active time bins (start/end time)
-opts.ridgeEdgeDrop_dB   = 28;  % for high-edge at start bin (more permissive)
-
-% Quiet hold time required below (peak-drop) to declare end (ms).
-% Typical: 0.1–0.4 ms depending on echo density.
 opts.boundRefine_quiet_ms = 0.20;
-
-% Search padding around initial bounds (ms)
 opts.boundRefine_pad_ms = 0.30;
-
-% Start refinement: threshold below peak used to find true onset (dB down from peak)
-% Typical: 16–24. Larger = later onset (more conservative).
 opts.boundRefine_startDrop_dB = 18;
 
+% --- Ridge frequency logic knobs ---
+opts.ridgeActiveDrop_dB = 12;
+opts.ridgeEdgeDropStart_dB = 28;
+opts.ridgeEdgeDropEnd_dB   = 36;
+
+% ==============================================================
+% Auto-start threshold additional constraints (do NOT replace baseline)
+% ==============================================================
+% Goal: keep baseline initThrAboveNoise_dB unless it violates constraints.
+% If it violates, increase threshold until satisfied.
+
+opts.autoThr_enable       = true;
+opts.autoThr_searchMax_dB = 40;   % search upward from baseline to this max
+opts.autoThr_step_dB      = 0.5;
+
+% Constraint #1: min IPI (ms) among KEPT calls
+opts.autoThr_minIPI_ms    = 2.0;
+
+% Constraint #2: no KEPT calls with bandwidth == 0 (or effectively 0)
+opts.autoThr_noZeroBW_enable = true;
+opts.autoThr_minBandwidth_kHz = 0.10; % treat anything below this as "zero-ish"
 end

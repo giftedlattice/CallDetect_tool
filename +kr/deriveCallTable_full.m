@@ -1,10 +1,22 @@
 function T = deriveCallTable_full(sig, fs, calls, meta, opts)
 %DERIVECALLTABLE_FULL Export table for detected calls (modular version).
 %
-% Includes metadata columns:
+% Metadata columns:
 %   bat, date, trial, condition, catchTrial, temperature_C, humidity_pct
 %
-% startFreq_kHz is defined as startFreq_high_kHz (upper edge at onset).
+% Frequency conventions (UPDATED):
+%   startFreq_kHz  = start HIGH edge at the START time bin (startHigh_kHz)
+%   endFreq_kHz    = end LOW edge at the END time bin (endLow_kHz)
+%
+% Diagnostic columns retained:
+%   startFreq_low_kHz  (ridge at start bin)
+%   startFreq_high_kHz (high edge at start bin)
+%   endFreq_ridge_kHz  (ridge at end bin)
+%   endFreq_low_kHz    (low edge at end bin)  <-- same as exported endFreq_kHz
+%
+% Bandwidth and slope:
+%   bandwidth_kHz      = max(ridge)-min(ridge) across active time bins
+%   slope_kHz_per_ms   = (endFreq_kHz - startFreq_kHz) / duration_ms  (signed)
 
 n = numel(calls);
 
@@ -54,14 +66,16 @@ ipi_ms      = nan(n,1);
 
 peakFreq_kHz = nan(n,1);
 
-% Canonical startFreq_kHz (will equal high edge)
-startFreq_kHz = nan(n,1);
+% Exported start/end frequencies
+startFreq_kHz = nan(n,1);  % START HIGH edge
+endFreq_kHz   = nan(n,1);  % END LOW edge
 
 % Diagnostics
-startFreq_low_kHz  = nan(n,1);
-startFreq_high_kHz = nan(n,1);
+startFreq_low_kHz   = nan(n,1); % ridge at start time bin
+startFreq_high_kHz  = nan(n,1); % high edge at start time bin
+endFreq_ridge_kHz   = nan(n,1); % ridge at end time bin
+endFreq_low_kHz     = nan(n,1); % low edge at end time bin (same as endFreq_kHz)
 
-endFreq_kHz   = nan(n,1);
 bandwidth_kHz = nan(n,1);
 slope_kHz_per_ms = nan(n,1);
 
@@ -104,27 +118,34 @@ for k = 1:n
     fPeak = kr.feature_peakFreqWelch_v7(segR, fs, opts);
     peakFreq_kHz(k) = fPeak;
 
-    % Ridge features (includes startHigh)
+    % Ridge features (includes startHigh and endLow)
     r = kr.feature_ridgeFreqs_v7(segR, fs, opts);
 
+    % Diagnostics at start
     startFreq_low_kHz(k)  = r.start_kHz;
     startFreq_high_kHz(k) = r.startHigh_kHz;
 
-    % Canonical startFreq for downstream use: HIGH edge
+    % Exported START = high edge
     startFreq_kHz(k) = r.startHigh_kHz;
 
-    endFreq_kHz(k) = r.end_kHz;
+    % Diagnostics at end
+    endFreq_ridge_kHz(k) = r.end_kHz;
+    endFreq_low_kHz(k)   = r.endLow_kHz;
 
+    % Exported END = low edge
+    endFreq_kHz(k) = r.endLow_kHz;
+
+    % Bandwidth from ridge min/max across active bins
     if isfinite(r.min_kHz) && isfinite(r.max_kHz)
         bandwidth_kHz(k) = r.max_kHz - r.min_kHz;
     end
 
-    % Slope uses canonical startFreq_kHz (high edge)
+    % Slope uses exported start/end
     if isfinite(startFreq_kHz(k)) && isfinite(endFreq_kHz(k)) && duration_ms(k) > 0
         slope_kHz_per_ms(k) = (endFreq_kHz(k) - startFreq_kHz(k)) / duration_ms(k);
     end
 
-    % Amplitudes at rear peak frequency (NaN-safe inside helper)
+    % Amplitudes at rear peak frequency (NaN-safe helper)
     if isfinite(fPeak)
         amps = kr.feature_peakAmpsAtPeakFreq_v7(segR, segL, segRR, fs, opts, fPeak);
         peakAmp_rear(k)  = amps.rear;
@@ -136,12 +157,15 @@ end
 % -------------------------
 % Final table (metadata first)
 % -------------------------
-T = table(bat,date,trial,condition,catchTrial,temperature_C,humidity_pct,call_number, ...
+T = table( ...
+    bat,date,trial,condition,catchTrial,temperature_C,humidity_pct,call_number, ...
     timestamp_s,timestamp_left_s,timestamp_right_s, ...
     duration_ms,ipi_ms, ...
     peakFreq_kHz, ...
-    startFreq_kHz, ...
-    startFreq_low_kHz,startFreq_high_kHz, ...
-    endFreq_kHz,bandwidth_kHz,slope_kHz_per_ms, ...
-    peakAmp_rear,peakAmp_left,peakAmp_right);
+    startFreq_kHz, endFreq_kHz, ...
+    startFreq_low_kHz, startFreq_high_kHz, ...
+    endFreq_ridge_kHz, endFreq_low_kHz, ...
+    bandwidth_kHz, slope_kHz_per_ms, ...
+    peakAmp_rear, peakAmp_left, peakAmp_right);
+
 end
